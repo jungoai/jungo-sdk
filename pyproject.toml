@@ -1,0 +1,36 @@
+[project]
+name            = "jungo-sdk"
+version         = "0.1.0"
+readme          = "README.md"
+requires-python = ">=3.10"
+dependencies    = [
+    "bittensor>=8",
+    "bittensor-wallet>=2.1.3",
+    "pydantic>=2",
+    "rich>=13",
+    "pytest>=8",
+    "json-rpc>=1",
+    "Werkzeug>=3",
+    "requests>=2",
+    "fastapi[standard]>=0.110.0",
+]
+
+[project.scripts]
+"transport-server"  = "examples.transport_layer.server:main"
+"transport-client"  = "examples.transport_layer.client:main"
+"echo-worker"       = "examples.echo.worker:main"
+"echo-monitor"      = "examples.echo.monitor:main"
+
+[build-system]
+requires = ["hatchling", "wheel"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+dev-dependencies = []
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["jungo", "tests", "examples"]
