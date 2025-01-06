@@ -12,10 +12,6 @@ import bittensor_wallet as btwallet
 #------------------------------------------------------------------------------
 #-- Types/Constants
 
-# TODO: get it from args or config
-# MILLISECS_PER_BLOCK = 12000 # normal
-MILLISECS_PER_BLOCK = 5000 # fast-block
-
 @dataclass
 class Endpoint:
     ip  : IPAddress
@@ -37,12 +33,20 @@ class Endpoint:
 @dataclass
 class Tempo:
     block_number: int
+    millisecs_per_block: int
+
+    def __init__(self, block_number: int, fast_blocks: bool) -> None:
+        self.block_number = block_number
+        if fast_blocks:
+            self.millisecs_per_block = 5000
+        else:
+            self.millisecs_per_block = 12000
 
     def millisecs(self) -> int:
-        return self.block_number * MILLISECS_PER_BLOCK
+        return self.block_number * self.millisecs_per_block
 
     def second(self) -> float:
-        return self.block_number * MILLISECS_PER_BLOCK / 1000
+        return self.block_number * self.millisecs_per_block / 1000
 
 Uid             = int
 WorkerWeight    = int
@@ -69,7 +73,7 @@ class WorkerEndpointRegisterFailed  (NodeError): pass
 #-- Jungo Node
 
 @dataclass
-class JConfig:
+class JNodeConfig:
     bt_conf: bt.Config
     netuid : int
 
@@ -80,7 +84,7 @@ class JNode:
     wallet      : btwallet.Wallet
     subtensor   : bt.Subtensor
 
-    def __init__(self, conf: JConfig):
+    def __init__(self, conf: JNodeConfig):
         """ ! NodeError 
         """
         bt_conf     = conf.bt_conf
@@ -106,13 +110,21 @@ class JNode:
 #-- Monitor
 
 @dataclass
-class Monitor:
-    node: JNode
+class MonitorConfig:
+    inner       : JNodeConfig
+    fast_blocks : bool
 
-    def __init__(self, conf: JConfig):
+
+@dataclass
+class Monitor:
+    node        : JNode
+    fast_blocks : bool
+
+    def __init__(self, conf: MonitorConfig):
         """ ! NodeError 
         """
-        self.node   = JNode(conf)
+        self.node        = JNode(conf.inner)
+        self.fast_blocks = conf.fast_blocks
 
     def set_weights_with(
         self,
@@ -163,7 +175,7 @@ class Monitor:
         n    = self.node
         temp = n.subtensor.tempo(n.netuid)
 
-        if not temp is None : return Tempo(temp)
+        if not temp is None : return Tempo(temp, self.fast_blocks)
         else                : raise  SubnetNotRegistered()
 
     def guard_hotkey_registred(self):
@@ -184,15 +196,23 @@ class Monitor:
 #-- Worker
 
 @dataclass
+class WorkerConfig:
+    inner   : JNodeConfig
+    ip      : IPAddress
+    port    : int
+
+@dataclass
 class Worker:
     node: JNode
-    ip  : IPAddress
+    ip  : str
     port: int
 
-    def __init__(self, ip: str, port: int, conf: JConfig):
+    def __init__(self, conf: WorkerConfig):
         """ ! NodeError 
         """
-        n = JNode(conf)
+        n    = JNode(conf.inner)
+        ip   = str(conf.ip)
+        port = conf.port
 
         axons = n.subtensor.query_map_subtensor("Axons")
         net = n.netuid
@@ -206,8 +226,8 @@ class Worker:
             bt.logging.debug(f"Axon Registerd befor for: netuid: {net}, hotkey: {hot}")
 
         self.node = n
-        self.ip   = IPAddress(ip)
+        self.ip   = ip
         self.port = port
 
-def serve_worker(w: Worker, s: RpcServer) -> None:
-    serve(str(w.ip), w.port, s.rpcs())
+def serve_worker(port: int, s: RpcServer) -> None:
+    serve("0.0.0.0", port, s.rpcs())

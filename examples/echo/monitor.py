@@ -1,5 +1,6 @@
 from time                   import sleep
-from jungo_sdk              import Endpoint, JConfig, Monitor, Uid, WorkerWeight, RpcClient
+from jungo_sdk              import Endpoint, JNodeConfig, Monitor, Uid, WorkerWeight, RpcClient
+from jungo_sdk.node         import MonitorConfig
 from jungo_sdk.utils        import cfn
 from examples.echo.api      import PingApi
 
@@ -45,10 +46,22 @@ def config_from_args():
     bt.subtensor.add_args(parser)
     bt.logging.add_args(parser)
     bt.axon.add_args(parser)
-    return JConfig(
-        bt_conf = bt.config(parser),
-        netuid  = 101  # TODO
+
+    bt_conf = bt.config(parser)
+
+    parser.add_argument("--netuid", type=int, help="netuid", required=True)
+    parser.add_argument("--fast_blocks", action="store_true", help="netuid")
+
+    args = parser.parse_args()
+
+    inner = JNodeConfig(
+        bt_conf,
+        args.netuid
     )
+
+    print("debug: fast_blocks:", args.fast_blocks)
+
+    return MonitorConfig(inner, args.fast_blocks)
 
 def main():
     config      = config_from_args()

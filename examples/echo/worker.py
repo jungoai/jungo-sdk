@@ -1,10 +1,13 @@
 from typing             import Callable
-from jungo_sdk          import JConfig, NodeError, RpcServer, Worker, serve_worker
+from jungo_sdk          import JNodeConfig, NodeError, RpcServer, Worker, serve_worker
 from examples.echo.api  import PingApi
+from netaddr            import IPAddress
 
 import bittensor as bt
 import traceback
 import argparse
+
+from jungo_sdk.node import WorkerConfig
 
 
 class RpcServerImpl(RpcServer, PingApi):
@@ -29,9 +32,24 @@ def config_from_args():
     bt.subtensor.add_args(parser)
     bt.logging.add_args(parser)
     bt.axon.add_args(parser)
-    return JConfig(
-        bt_conf = bt.config(parser),
-        netuid  = 101 # TODO
+
+    bt_conf = bt.config(parser)
+
+    parser.add_argument("--netuid", type=int, help="netuid", required=True)
+    parser.add_argument("--ip", type=str, help="ip", required=True) # TODO: help
+    parser.add_argument("--port", type=int, help="port", required=True) # TODO: help
+
+    args = parser.parse_args()
+
+    inner = JNodeConfig(
+        bt_conf,
+        args.netuid
+    )
+
+    return WorkerConfig(
+        inner,
+        args.ip,
+        args.port # 4000
     )
 
 def main():
@@ -39,9 +57,8 @@ def main():
 
     try:
         server = RpcServerImpl()
-        # read ip:port from arg/config
-        worker = Worker("192.168.55.53", 4000, config)
-        serve_worker(worker, server)
+        worker = Worker(config)
+        serve_worker(worker.port, server)
     except NodeError as e:
         bt.logging.error("NodeError: " + str(e))
         traceback.print_exc()
