@@ -33,4 +33,4 @@ dev-dependencies = []
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["jungo", "tests", "examples"]
+packages = ["jungo_sdk", "tests", "examples"]
