@@ -15,11 +15,11 @@ rye install jungo-sdk --git https://github.com/jungoai/jungo-sdk.git
 ## Run Echo worker
 
 ```bash
-echo-worker --ip <HOST-IP> --port <PORT> --netuid <NETUID> --logging.debug --subtensor.chain_endpoint ws://<CHAIN-IP>:<CHAIN-PORT> --wallet.name <NAME> --wallet.hotkey <HOTKEY>
+jungo-sdk-echo-worker --ip <HOST-IP> --port <PORT> --netuid <NETUID> --logging.debug --subtensor.chain_endpoint ws://<CHAIN-IP>:<CHAIN-PORT> --wallet.name <NAME> --wallet.hotkey <HOTKEY>
 ```
 
 ## Run Echo monitor
 
 ```bash
-echo-monitor --subtensor.chain_endpoint ws://<CHAIN-IP>:<CHAIN-PORT> --wallet.name <NAME> --wallet.hotkey <HOTKEY> --logging.debug --netuid <NETUID>
+jungo-sdk-echo-monitor --subtensor.chain_endpoint ws://<CHAIN-IP>:<CHAIN-PORT> --wallet.name <NAME> --wallet.hotkey <HOTKEY> --logging.debug --netuid <NETUID>
 ```
