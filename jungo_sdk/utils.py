@@ -52,6 +52,12 @@ def unOpt(x: T | None) -> T:
     else:
         return x
 
+def unOptOr(y:T, x: T | None) -> T:
+    if x is None:
+        return y
+    else:
+        return x
+
 #------------------------------------------------------------------------------
 #-- debuging
 

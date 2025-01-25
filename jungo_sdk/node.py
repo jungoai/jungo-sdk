@@ -5,12 +5,20 @@ from dataclasses                            import dataclass
 from netaddr                                import IPAddress
 from jungo_sdk.transport                    import RpcServer, serve
 from jungo_sdk.utils                        import guard, lmap, unOpt
+from pathlib                                import Path
 
 import bittensor        as bt
 import bittensor_wallet as btwallet
 
 #------------------------------------------------------------------------------
 #-- Types/Constants
+
+
+HOME_DIR = Path.home()
+DEFAULT_SDK_DIR = HOME_DIR / ".jungoai"
+DEFAULT_WALLETS_DIR = DEFAULT_SDK_DIR / "wallets"
+DEFAULT_MINERS_DIR = DEFAULT_SDK_DIR / "miners"
+
 
 @dataclass
 class Endpoint:
@@ -76,6 +84,9 @@ class WorkerEndpointRegisterFailed  (NodeError): pass
 class JNodeConfig:
     bt_conf: bt.Config
     netuid : int
+    wallet_path: str = str(DEFAULT_WALLETS_DIR)
+    logging_path: str = str(DEFAULT_MINERS_DIR)
+    chain_endpoint: str = "wss://devnet-rpc.jungoai.xyz" # TODO: change it after runnig mainnet
 
 @dataclass
 class JNode:
@@ -87,6 +98,11 @@ class JNode:
     def __init__(self, conf: JNodeConfig):
         """ ! NodeError 
         """
+
+        conf.bt_conf.wallet.path                = conf.wallet_path # type: ignore
+        conf.bt_conf.logging.logging_dir        = conf.logging_path # type: ignore
+        conf.bt_conf.subtensor.chain_endpoint   = conf.chain_endpoint # type: ignore
+
         bt_conf     = conf.bt_conf
         netuid      = conf.netuid
         wallet      = bt.wallet(config=bt_conf)
