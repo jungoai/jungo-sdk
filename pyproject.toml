@@ -15,11 +15,11 @@ dependencies    = [
     "fastapi[standard]>=0.110.0",
 ]
 
-[project.scripts]
-"jungo-sdk-transport-server"  = "examples.transport_layer.server:main"
-"jungo-sdk-transport-client"  = "examples.transport_layer.client:main"
-"jungo-sdk-echo-worker"       = "examples.echo.worker:main"
-"jungo-sdk-echo-monitor"      = "examples.echo.monitor:main"
+[tool.rye.scripts]
+transport-server  = "examples.transport_layer.server:main"
+transport-client  = "examples.transport_layer.client:main"
+echo-worker       = "examples.echo.worker:main"
+echo-monitor      = "examples.echo.monitor:main"
 
 [build-system]
 requires = ["hatchling", "wheel"]
