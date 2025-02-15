@@ -1,7 +1,7 @@
 from typing             import Callable
 from jungo_sdk          import NodeError, RpcServer, serve_worker
 from examples.echo.api  import PingApi
-from jungo_sdk.node     import mk_worker_from_args
+from jungo_sdk.node     import add_args_worker_and_conf, mk_worker_from_args
 
 import bittensor as bt
 import traceback
@@ -26,7 +26,9 @@ def main():
 
     try:
         server = RpcServerImpl()
-        worker = mk_worker_from_args(parser)
+        conf = add_args_worker_and_conf(parser)
+        args = parser.parse_args()
+        worker = mk_worker_from_args(args, conf)
         serve_worker(worker.port, server)
     except NodeError as e:
         bt.logging.error("NodeError: " + str(e))

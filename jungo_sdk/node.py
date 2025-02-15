@@ -1,4 +1,4 @@
-from argparse                               import ArgumentParser
+from argparse                               import ArgumentParser, Namespace
 from typing                                 import Callable
 from bittensor.core.extrinsics.serving      import serve_extrinsic
 from bittensor.core.extrinsics.set_weights  import do_set_weights
@@ -99,9 +99,9 @@ class JNode:
         """ errors: NodeError 
         """
 
-        conf.bt_conf.wallet.path = wallet_path # type: ignore
-        conf.bt_conf.logging.logging_dir = logging_path # type: ignore
-        conf.bt_conf.subtensor.chain_endpoint = chain_endpoint # type: ignore
+        bt_conf.wallet.path = wallet_path # type: ignore
+        bt_conf.logging.logging_dir = logging_path # type: ignore
+        bt_conf.subtensor.chain_endpoint = chain_endpoint # type: ignore
 
         wallet      = bt.wallet(config=bt_conf)
         subtensor   = bt.subtensor(config=bt_conf)
@@ -120,20 +120,24 @@ class JNode:
     def hotkey(self):
         return self.wallet.hotkey.ss58_address
 
-def mk_jnode_from_args(parser: ArgumentParser) -> JNode:
+def add_args_jnode_and_conf(parser):
+    conf = mk_conf(parser)
+    parser.add_argument("--netuid", type=int, help="netuid", required=True)
+    parser.add_argument("--chain", type=str, help="chain") # TODO: help
+    return conf
+
+def mk_conf(parser):
     bt.wallet.add_args(parser)
     bt.subtensor.add_args(parser)
     bt.logging.add_args(parser)
     bt.axon.add_args(parser)
-    bt_conf = bt.config(parser)
-    parser.add_argument("--netuid", type=int, help="netuid", required=True)
-    parser.add_argument("--chain", type=str, help="chain") # TODO: help
-    args = parser.parse_args()
+    return bt.config(parser)
 
+def mk_jnode_from_args(args: Namespace, conf) -> JNode:
     return JNode(
-        bt_conf,
-        args.netuid,
-        chain_endpoint=args.chain
+        bt_conf = conf,
+        netuid = args.netuid,
+        chain_endpoint = args.chain
     )
 
 #------------------------------------------------------------------------------
@@ -210,12 +214,15 @@ class Monitor:
             HotkeyNotRegistered(hotkey, netuid)
         )
 
-def mk_monitor_from_args(parser: ArgumentParser) -> Monitor:
-    node = mk_jnode_from_args(parser)
+def add_args_monitor_and_conf(parser: ArgumentParser):
+    # conf should created before add new args
+    conf = add_args_jnode_and_conf(parser)
     parser.add_argument("--fast_blocks", action="store_true", help="netuid")
-    args = parser.parse_args()
+    return conf
 
-    return Monitor(node, args.fast_blocks)
+def mk_monitor_from_args(args: Namespace, conf) -> Monitor:
+    jnode = mk_jnode_from_args(args, conf)
+    return Monitor(jnode, args.fast_blocks)
 
 #------------------------------------------------------------------------------
 #-- Worker
@@ -252,13 +259,15 @@ class Worker:
         self.ip   = ip
         self.port = port
 
-def mk_worker_from_args(parser: ArgumentParser) -> Worker:
-    node = mk_jnode_from_args(parser)
-
+def add_args_worker_and_conf(parser: ArgumentParser):
+    # conf should created before add new args
+    conf = add_args_jnode_and_conf(parser)
     parser.add_argument("--ip", type=str, help="ip", required=True) # TODO: help
     parser.add_argument("--port", type=int, help="port", required=True) # TODO: help
-    args = parser.parse_args()
+    return conf
 
+def mk_worker_from_args(args: Namespace, conf) -> Worker:
+    node = mk_jnode_from_args(args, conf)
     return Worker(
         node,
         args.ip,

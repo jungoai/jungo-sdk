@@ -1,6 +1,6 @@
 from time                   import sleep
 from jungo_sdk              import Endpoint, Uid, WorkerWeight, RpcClient
-from jungo_sdk.node         import mk_monitor_from_args
+from jungo_sdk.node         import add_args_monitor_and_conf, mk_monitor_from_args
 from jungo_sdk.utils        import cfn
 from examples.echo.api      import PingApi
 
@@ -39,7 +39,9 @@ def get_client(endpoint: Endpoint, cache: dict[Endpoint, RpcClientImpl]) -> RpcC
 
 def main():
     parser      = argparse.ArgumentParser()
-    monitor     = mk_monitor_from_args(parser)
+    conf        = add_args_monitor_and_conf(parser)
+    args        = parser.parse_args()
+    monitor     = mk_monitor_from_args(args, conf)
     tempo_sec   = monitor.tempo().second()
     ccache      = {}
 
