@@ -1,3 +1,4 @@
+from argparse                               import ArgumentParser
 from typing                                 import Callable
 from bittensor.core.extrinsics.serving      import serve_extrinsic
 from bittensor.core.extrinsics.set_weights  import do_set_weights
@@ -81,30 +82,27 @@ class WorkerEndpointRegisterFailed  (NodeError): pass
 #-- Jungo Node
 
 @dataclass
-class JNodeConfig:
-    bt_conf: bt.Config
-    netuid : int
-    wallet_path: str = str(DEFAULT_WALLETS_DIR)
-    logging_path: str = str(DEFAULT_MINERS_DIR)
-    chain_endpoint: str = "wss://devnet-rpc.jungoai.xyz" # TODO: change it after runnig mainnet
-
-@dataclass
 class JNode:
     netuid      : int
     uid         : int
     wallet      : btwallet.Wallet
     subtensor   : bt.Subtensor
 
-    def __init__(self, conf: JNodeConfig):
-        """ ! NodeError 
+    def __init__(
+        self, 
+        bt_conf: bt.Config,
+        netuid : int,
+        wallet_path: str = str(DEFAULT_WALLETS_DIR),
+        logging_path: str = str(DEFAULT_MINERS_DIR),
+        chain_endpoint: str = "wss://devnet-rpc.jungoai.xyz" # TODO: change it after runnig mainnet
+    ):
+        """ errors: NodeError 
         """
 
-        conf.bt_conf.wallet.path                = conf.wallet_path # type: ignore
-        conf.bt_conf.logging.logging_dir        = conf.logging_path # type: ignore
-        conf.bt_conf.subtensor.chain_endpoint   = conf.chain_endpoint # type: ignore
+        conf.bt_conf.wallet.path = wallet_path # type: ignore
+        conf.bt_conf.logging.logging_dir = logging_path # type: ignore
+        conf.bt_conf.subtensor.chain_endpoint = chain_endpoint # type: ignore
 
-        bt_conf     = conf.bt_conf
-        netuid      = conf.netuid
         wallet      = bt.wallet(config=bt_conf)
         subtensor   = bt.subtensor(config=bt_conf)
         hotkey_addr = wallet.hotkey.ss58_address
@@ -114,33 +112,37 @@ class JNode:
             HotkeyNotRegistered(str(hotkey_addr), netuid)
         )
 
-        self.netuid       = netuid
-        self.uid          = subtensor.metagraph(netuid).hotkeys.index(hotkey_addr)
-        self.wallet       = wallet
-        self.subtensor    = subtensor
+        self.netuid     = netuid
+        self.uid        = subtensor.metagraph(netuid).hotkeys.index(hotkey_addr)
+        self.wallet     = wallet
+        self.subtensor  = subtensor
 
     def hotkey(self):
         return self.wallet.hotkey.ss58_address
+
+def mk_jnode_from_args(parser: ArgumentParser) -> JNode:
+    bt.wallet.add_args(parser)
+    bt.subtensor.add_args(parser)
+    bt.logging.add_args(parser)
+    bt.axon.add_args(parser)
+    bt_conf = bt.config(parser)
+    parser.add_argument("--netuid", type=int, help="netuid", required=True)
+    parser.add_argument("--chain", type=str, help="chain") # TODO: help
+    args = parser.parse_args()
+
+    return JNode(
+        bt_conf,
+        args.netuid,
+        chain_endpoint=args.chain
+    )
 
 #------------------------------------------------------------------------------
 #-- Monitor
 
 @dataclass
-class MonitorConfig:
-    inner       : JNodeConfig
-    fast_blocks : bool
-
-
-@dataclass
 class Monitor:
     node        : JNode
     fast_blocks : bool
-
-    def __init__(self, conf: MonitorConfig):
-        """ ! NodeError 
-        """
-        self.node        = JNode(conf.inner)
-        self.fast_blocks = conf.fast_blocks
 
     def set_weights_with(
         self,
@@ -208,27 +210,32 @@ class Monitor:
             HotkeyNotRegistered(hotkey, netuid)
         )
 
+def mk_monitor_from_args(parser: ArgumentParser) -> Monitor:
+    node = mk_jnode_from_args(parser)
+    parser.add_argument("--fast_blocks", action="store_true", help="netuid")
+    args = parser.parse_args()
+
+    return Monitor(node, args.fast_blocks)
+
 #------------------------------------------------------------------------------
 #-- Worker
 
 @dataclass
-class WorkerConfig:
-    inner   : JNodeConfig
-    ip      : IPAddress
-    port    : int
-
-@dataclass
 class Worker:
-    node: JNode
-    ip  : str
-    port: int
+    node:   JNode
+    ip:     str
+    port:   int
 
-    def __init__(self, conf: WorkerConfig):
-        """ ! NodeError 
+    def __init__(
+        self, 
+        node: JNode,
+        ip_: IPAddress,
+        port: int
+    ):
+        """ errors: NodeError 
         """
-        n    = JNode(conf.inner)
-        ip   = str(conf.ip)
-        port = conf.port
+        n    = node
+        ip   = str(ip_)
 
         axons = n.subtensor.query_map_subtensor("Axons")
         net = n.netuid
@@ -244,6 +251,19 @@ class Worker:
         self.node = n
         self.ip   = ip
         self.port = port
+
+def mk_worker_from_args(parser: ArgumentParser) -> Worker:
+    node = mk_jnode_from_args(parser)
+
+    parser.add_argument("--ip", type=str, help="ip", required=True) # TODO: help
+    parser.add_argument("--port", type=int, help="port", required=True) # TODO: help
+    args = parser.parse_args()
+
+    return Worker(
+        node,
+        args.ip,
+        args.port
+    )
 
 def serve_worker(port: int, s: RpcServer) -> None:
     serve("0.0.0.0", port, s.rpcs())
